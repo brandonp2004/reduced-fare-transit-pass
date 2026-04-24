@@ -22,7 +22,6 @@ type Application struct {
 }
 
 type CreateApplicationInput struct {
-	Email             string `json:"email"`
 	FullName          string `json:"full_name"`
 	DateOfBirth       string `json:"date_of_birth"`
 	TransitIDNumber   string `json:"transit_id_number"`
@@ -35,15 +34,11 @@ type ReviewApplicationInput struct {
 }
 
 func ValidateCreateApplicationInput(input CreateApplicationInput) error {
-	input.Email = strings.TrimSpace(input.Email)
 	input.FullName = strings.TrimSpace(input.FullName)
 	input.DateOfBirth = strings.TrimSpace(input.DateOfBirth)
 	input.TransitIDNumber = strings.TrimSpace(input.TransitIDNumber)
 	input.EligibilityReason = strings.TrimSpace(input.EligibilityReason)
 
-	if input.Email == "" {
-		return fmt.Errorf("email is required")
-	}
 	if input.FullName == "" {
 		return fmt.Errorf("full_name is required")
 	}

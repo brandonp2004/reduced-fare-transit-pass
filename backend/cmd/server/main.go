@@ -10,9 +10,13 @@ import (
 	"reduced-fare-transit-pass/backend/internal/applications"
 	"reduced-fare-transit-pass/backend/internal/auth"
 	"reduced-fare-transit-pass/backend/internal/db"
+	"reduced-fare-transit-pass/backend/internal/middleware"
 	"reduced-fare-transit-pass/backend/internal/passes"
+	"reduced-fare-transit-pass/backend/internal/sessions"
 	"reduced-fare-transit-pass/backend/internal/users"
 )
+
+const sessionDuration = 7 * 24 * time.Hour
 
 type HealthResponse struct {
 	Status  string `json:"status"`
@@ -32,10 +36,26 @@ type UserResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type LoginResponse struct {
+type MessageResponse struct {
 	Message string `json:"message"`
-	Email   string `json:"email"`
-	Role    string `json:"role"`
+}
+
+type VerifyPassResponse struct {
+	PassNumber string    `json:"pass_number"`
+	Status     string    `json:"status"`
+	IssuedAt   time.Time `json:"issued_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	Valid      bool      `json:"valid"`
+	Message    string    `json:"message"`
+}
+
+func safeUserResponse(user *users.User) UserResponse {
+	return UserResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
+	}
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -132,17 +152,10 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	err = json.NewEncoder(w).Encode(response)
+	err = json.NewEncoder(w).Encode(safeUserResponse(user))
 	if err != nil {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
@@ -188,14 +201,78 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := LoginResponse{
-		Message: "login successful",
-		Email:   user.Email,
-		Role:    user.Role,
+	rawToken, _, err := sessions.CreateSession(conn, user.ID, sessionDuration)
+	if err != nil {
+		http.Error(w, "failed to create session", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.SessionCookieName,
+		Value:    rawToken,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   false,
+		Expires:  time.Now().Add(sessionDuration),
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(safeUserResponse(user))
+	if err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	cookie, err := r.Cookie(middleware.SessionCookieName)
+	if err == nil && cookie.Value != "" {
+		conn, dbErr := db.Open()
+		if dbErr == nil {
+			_ = sessions.DeleteSessionByToken(conn, cookie.Value)
+			conn.Close(context.Background())
+		}
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.SessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   false,
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(MessageResponse{Message: "logout successful"})
+	if err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func meHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := middleware.CurrentUser(r)
+	if !ok {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(response)
+	err := json.NewEncoder(w).Encode(safeUserResponse(user))
 	if err != nil {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
@@ -205,6 +282,17 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 func createApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := middleware.CurrentUser(r)
+	if !ok {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	if user.Role != "resident" {
+		http.Error(w, "resident access required", http.StatusForbidden)
 		return
 	}
 
@@ -229,12 +317,6 @@ func createApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close(context.Background())
 
-	user, err := users.GetUserByEmail(conn, input.Email)
-	if err != nil {
-		http.Error(w, "user not found", http.StatusNotFound)
-		return
-	}
-
 	app, err := applications.CreateApplication(
 		conn,
 		user.ID,
@@ -257,15 +339,15 @@ func createApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getApplicationsByEmailHandler(w http.ResponseWriter, r *http.Request) {
+func getMyApplicationsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	email := r.URL.Query().Get("email")
-	if email == "" {
-		http.Error(w, "email query parameter is required", http.StatusBadRequest)
+	user, ok := middleware.CurrentUser(r)
+	if !ok {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
 		return
 	}
 
@@ -275,12 +357,6 @@ func getApplicationsByEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close(context.Background())
-
-	user, err := users.GetUserByEmail(conn, email)
-	if err != nil {
-		http.Error(w, "user not found", http.StatusNotFound)
-		return
-	}
 
 	apps, err := applications.GetApplicationsByUserID(conn, user.ID)
 	if err != nil {
@@ -380,15 +456,15 @@ func reviewApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getPassesByEmailHandler(w http.ResponseWriter, r *http.Request) {
+func getMyPassesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	email := r.URL.Query().Get("email")
-	if email == "" {
-		http.Error(w, "email query parameter is required", http.StatusBadRequest)
+	user, ok := middleware.CurrentUser(r)
+	if !ok {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
 		return
 	}
 
@@ -398,12 +474,6 @@ func getPassesByEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close(context.Background())
-
-	user, err := users.GetUserByEmail(conn, email)
-	if err != nil {
-		http.Error(w, "user not found", http.StatusNotFound)
-		return
-	}
 
 	passList, err := passes.GetPassesByUserID(conn, user.ID)
 	if err != nil {
@@ -446,6 +516,58 @@ func getAllPassesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func verifyPassHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	passNumber := r.URL.Query().Get("pass_number")
+	if passNumber == "" {
+		http.Error(w, "pass_number query parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := db.Open()
+	if err != nil {
+		http.Error(w, "database connection failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	pass, err := passes.GetPassByPassNumber(conn, passNumber)
+	if err != nil {
+		http.Error(w, "pass not found", http.StatusNotFound)
+		return
+	}
+
+	now := time.Now()
+	valid := pass.Status == "active" && pass.ExpiresAt.After(now)
+
+	message := "pass is valid"
+	if pass.Status != "active" {
+		message = "pass is not active"
+	} else if !pass.ExpiresAt.After(now) {
+		message = "pass has expired"
+	}
+
+	response := VerifyPassResponse{
+		PassNumber: pass.PassNumber,
+		Status:     pass.Status,
+		IssuedAt:   pass.IssuedAt,
+		ExpiresAt:  pass.ExpiresAt,
+		Valid:      valid,
+		Message:    message,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -468,12 +590,15 @@ func main() {
 	mux.HandleFunc("/api/db-health", dbHealthHandler)
 	mux.HandleFunc("/api/register", registerHandler)
 	mux.HandleFunc("/api/login", loginHandler)
-	mux.HandleFunc("/api/applications", createApplicationHandler)
-	mux.HandleFunc("/api/applications/by-email", getApplicationsByEmailHandler)
-	mux.HandleFunc("/api/admin/applications", getAllApplicationsHandler)
-	mux.HandleFunc("/api/admin/applications/review", reviewApplicationHandler)
-	mux.HandleFunc("/api/passes/by-email", getPassesByEmailHandler)
-	mux.HandleFunc("/api/admin/passes", getAllPassesHandler)
+	mux.HandleFunc("/api/logout", middleware.RequireAuth(logoutHandler))
+	mux.HandleFunc("/api/me", middleware.RequireAuth(meHandler))
+	mux.HandleFunc("/api/applications", middleware.RequireAuth(createApplicationHandler))
+	mux.HandleFunc("/api/applications/me", middleware.RequireAuth(getMyApplicationsHandler))
+	mux.HandleFunc("/api/admin/applications", middleware.RequireAdmin(getAllApplicationsHandler))
+	mux.HandleFunc("/api/admin/applications/review", middleware.RequireAdmin(reviewApplicationHandler))
+	mux.HandleFunc("/api/passes/me", middleware.RequireAuth(getMyPassesHandler))
+	mux.HandleFunc("/api/admin/passes", middleware.RequireAdmin(getAllPassesHandler))
+	mux.HandleFunc("/api/verify-pass", verifyPassHandler)
 
 	server := &http.Server{
 		Addr:    ":8080",

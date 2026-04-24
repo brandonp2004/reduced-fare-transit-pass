@@ -80,6 +80,32 @@ func GetUserByEmail(conn *pgx.Conn, email string) (*User, error) {
 	return &user, nil
 }
 
+func GetUserByID(conn *pgx.Conn, userID int) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := `
+		SELECT id, email, password_hash, role, created_at
+		FROM users
+		WHERE id = $1
+	`
+
+	var user User
+
+	err := conn.QueryRow(ctx, query, userID).Scan(
+		&user.ID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user by id: %w", err)
+	}
+
+	return &user, nil
+}
+
 func ValidateRegisterInput(input RegisterInput) error {
 	input.Email = strings.TrimSpace(input.Email)
 	input.Password = strings.TrimSpace(input.Password)

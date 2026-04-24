@@ -220,3 +220,31 @@ func GetAllPasses(conn *pgx.Conn) ([]Pass, error) {
 
 	return results, nil
 }
+
+func GetPassByPassNumber(conn *pgx.Conn, passNumber string) (*Pass, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := `
+		SELECT id, application_id, user_id, pass_number, status, issued_at, expires_at
+		FROM passes
+		WHERE pass_number = $1
+	`
+
+	var pass Pass
+
+	err := conn.QueryRow(ctx, query, passNumber).Scan(
+		&pass.ID,
+		&pass.ApplicationID,
+		&pass.UserID,
+		&pass.PassNumber,
+		&pass.Status,
+		&pass.IssuedAt,
+		&pass.ExpiresAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pass by pass number: %w", err)
+	}
+
+	return &pass, nil
+}
