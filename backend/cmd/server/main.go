@@ -598,7 +598,7 @@ func main() {
 	mux.HandleFunc("/api/admin/applications/review", middleware.RequireAdmin(reviewApplicationHandler))
 	mux.HandleFunc("/api/passes/me", middleware.RequireAuth(getMyPassesHandler))
 	mux.HandleFunc("/api/admin/passes", middleware.RequireAdmin(getAllPassesHandler))
-	mux.HandleFunc("/api/verify-pass", verifyPassHandler)
+	mux.HandleFunc("/api/verify-pass", middleware.RequireRoles("verifier", "admin")(verifyPassHandler))
 
 	server := &http.Server{
 		Addr:    ":8080",

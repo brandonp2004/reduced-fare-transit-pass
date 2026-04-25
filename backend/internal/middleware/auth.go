@@ -59,19 +59,27 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func RequireRoles(allowedRoles ...string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+			user, ok := CurrentUser(r)
+			if !ok {
+				http.Error(w, "authentication required", http.StatusUnauthorized)
+				return
+			}
+
+			for _, role := range allowedRoles {
+				if user.Role == role {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			http.Error(w, "forbidden", http.StatusForbidden)
+		})
+	}
+}
+
 func RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
-	return RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		user, ok := CurrentUser(r)
-		if !ok {
-			http.Error(w, "authentication required", http.StatusUnauthorized)
-			return
-		}
-
-		if user.Role != "admin" {
-			http.Error(w, "admin access required", http.StatusForbidden)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
+	return RequireRoles("admin")(next)
 }
