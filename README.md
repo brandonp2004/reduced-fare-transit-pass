@@ -1,41 +1,49 @@
 # Reduced-Fare Transit Pass
 
-A full-stack reduced-fare transit pass application built to simulate a government-style identity and eligibility workflow.
+A full-stack transit eligibility and pass issuance application that simulates a government-style workflow for resident enrollment, admin review, pass issuance, and verifier validation.
 
-This project supports:
-- resident registration and login
-- reduced-fare application submission
-- admin review and approval/rejection
-- automatic pass issuance on approval
-- resident pass viewing
-- admin issued-pass tracking
+## Overview
 
-## Why I built this
+This project was built to demonstrate a realistic civic-tech style workflow rather than a generic CRUD app.
 
-I built this project to create a realistic public-sector style workflow application instead of another generic CRUD app. The goal was to build something closer to identity, eligibility, review, and issuance systems used in government and civic software.
+The system supports three roles:
 
-## Current workflow
+- **Resident**: registers, logs in, submits reduced-fare applications, and views issued passes
+- **Admin**: reviews applications, approves or rejects submissions, and manages issued passes
+- **Verifier**: validates pass numbers and checks whether a pass is active and unexpired
 
-1. A resident registers for an account
-2. The resident logs in
-3. The resident submits a reduced-fare application
-4. An admin reviews the application
-5. If approved, the system issues a pass
-6. The resident can view their issued pass
-7. The admin can view all applications and all issued passes
+The app uses server-side session authentication with HTTP-only cookies and role-protected backend routes.
 
-## Screenshots
+---
 
-### Resident application view
-![Resident application view](docs/screenshots/resident-applications.png)
+## Features
 
-### Admin review queue
-![Admin review queue](docs/screenshots/admin-review.png)
+### Resident
+- Register and log in
+- Submit reduced-fare applications
+- View submitted applications and approval status
+- View issued transit passes
 
-### Issued pass view
-![Issued pass view](docs/screenshots/issued-pass.png)
+### Admin
+- Review all submitted applications
+- Approve or reject applications
+- Automatically issue passes on approval
+- View all issued passes
 
-## Tech stack
+### Verifier
+- Verify pass validity by pass number
+- Confirm whether a pass is active and not expired
+
+### Security / Auth
+- Password hashing with bcrypt
+- Session authentication with HTTP-only cookies
+- Persistent session restore on refresh
+- Server-side route protection by role
+- Resident identity tied to authenticated session instead of frontend email input
+
+---
+
+## Tech Stack
 
 ### Frontend
 - React
@@ -44,50 +52,75 @@ I built this project to create a realistic public-sector style workflow applicat
 
 ### Backend
 - Go
-- net/http
-- pgx
+- `net/http`
+- `pgx`
 
 ### Database
 - PostgreSQL
 
-### Local infrastructure
+### Infrastructure
 - Docker
 - Docker Compose
 
-## Features implemented
+---
 
-- User registration
-- User login
-- bcrypt password hashing
-- Reduced-fare application submission
-- Resident application history
-- Admin review queue
-- Application approval and rejection
-- Automatic pass issuance on approval
-- Pass revocation on rejection after issuance
-- Resident pass view
-- Admin pass tracking
+## Architecture
 
-## Project structure
+### Frontend
+The frontend is a React single-page application that:
+- handles login and session restore
+- presents role-specific views
+- communicates with backend API endpoints
+- renders resident, admin, and verifier workflows
 
-```text
-backend/
-  cmd/server/
-  internal/
-    applications/
-    auth/
-    db/
-    passes/
-    users/
+### Backend
+The Go backend:
+- handles authentication and session management
+- exposes role-protected API routes
+- manages business logic for applications, passes, and verification
+- interacts with PostgreSQL for persistent storage
 
-db/
-  init/
+### Database Tables
+- `users`
+- `applications`
+- `passes`
+- `sessions`
 
-docs/
-  screenshots/
+---
 
-frontend/
-  src/
+## Core Workflow
 
-infra/
-  docker/
+1. A resident registers and logs in
+2. The resident submits a reduced-fare application
+3. An admin reviews the application
+4. If approved, the system issues a pass
+5. The resident can view the issued pass
+6. An admin or verifier can validate the pass number
+
+---
+
+## Screenshots
+
+> Add your screenshots to `docs/screenshots/` and update these if needed.
+
+### Resident dashboard
+![Resident dashboard](docs/screenshots/resident-dashboard.png)
+
+### Admin review queue
+![Admin review queue](docs/screenshots/admin-review.png)
+
+### Issued passes
+![Issued passes](docs/screenshots/issued-passes.png)
+
+### Verifier panel
+![Verifier panel](docs/screenshots/verifier-panel.png)
+
+---
+
+## Local Setup
+
+### 1. Start PostgreSQL
+
+```powershell
+cd infra/docker
+docker compose up -d
