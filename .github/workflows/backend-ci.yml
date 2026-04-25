@@ -1,0 +1,69 @@
+name: backend-ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app_user
+          POSTGRES_PASSWORD: app_password
+          POSTGRES_DB: reduced_fare_transit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U app_user -d reduced_fare_transit"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USER: app_user
+      DB_PASSWORD: app_password
+      DB_NAME: reduced_fare_transit
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h 127.0.0.1 -p 5432 -U app_user -d reduced_fare_transit; do
+            sleep 2
+          done
+        env:
+          PGPASSWORD: app_password
+
+      - name: Run schema init scripts
+        run: |
+          for f in ../db/init/*.sql; do
+            psql "host=127.0.0.1 port=5432 user=app_user password=app_password dbname=reduced_fare_transit sslmode=disable" -f "$f"
+          done
+
+      - name: Run backend tests
+        run: go test ./cmd/server -v
