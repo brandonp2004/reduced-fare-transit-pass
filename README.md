@@ -1,5 +1,7 @@
 # Reduced-Fare Transit Pass
 
+[![backend-ci](https://github.com/brandonp2004/reduced-fare-transit-pass/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/brandonp2004/reduced-fare-transit-pass/actions/workflows/backend-ci.yml)
+
 A full-stack transit eligibility and pass issuance application that simulates a government-style workflow for resident enrollment, admin review, pass issuance, and verifier validation.
 
 ## Overview
@@ -34,7 +36,7 @@ The app uses server-side session authentication with HTTP-only cookies and role-
 - Verify pass validity by pass number
 - Confirm whether a pass is active and not expired
 
-### Security / Auth
+### Security and Auth
 - Password hashing with bcrypt
 - Session authentication with HTTP-only cookies
 - Persistent session restore on refresh
@@ -117,6 +119,41 @@ Add your screenshots to `docs/screenshots/` using the filenames below.
 
 ---
 
+## Testing
+
+The backend includes both route-level tests and Postgres-backed integration tests.
+
+Current test coverage includes:
+- health and root routes
+- protected route authentication checks
+- register, login, session restore, and logout flow
+- resident application submission
+- admin approval workflow
+- automatic pass issuance
+- verifier and admin pass validation
+- resident authorization restrictions
+
+Run backend tests locally with:
+
+```powershell
+cd backend
+go test ./cmd/server -v
+```
+
+---
+
+## Continuous Integration
+
+GitHub Actions runs the backend test suite automatically on every push and pull request.
+
+Workflow file:
+
+```text
+.github/workflows/backend-ci.yml
+```
+
+---
+
 ## Local Setup
 
 ### 1. Start PostgreSQL
@@ -183,7 +220,7 @@ http://localhost:5173
 - `POST /api/admin/applications/review`
 - `GET /api/admin/passes`
 
-### Verifier / Admin
+### Verifier and Admin
 - `GET /api/verify-pass?pass_number=...`
 
 ---
@@ -200,16 +237,16 @@ http://localhost:5173
 - automatic pass issuance logic
 - verifier-facing validation flow
 - Docker-based local development setup
+- backend testing and CI validation
 
 ---
 
 ## Current Limitations
 
 - UI is improved but still not production-grade
-- no audit log for who reviewed each application
+- no audit log for which admin reviewed each application
 - no renewal or expiration management workflow beyond stored expiration date
 - no file upload or identity document verification
-- no automated test suite yet
 - no deployment target yet
 
 ---
@@ -219,9 +256,9 @@ http://localhost:5173
 - add audit logging for admin review actions
 - add pass renewal and revocation management
 - add better navigation and role-specific landing pages
-- add automated backend and frontend tests
+- add automated frontend tests
 - add deployment configuration
-- add document upload / proof-of-eligibility flow
+- add document upload and proof-of-eligibility flow
 - improve visual design and mobile responsiveness
 
 ---
