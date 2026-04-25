@@ -112,12 +112,17 @@ function App() {
   const [verifyPassResult, setVerifyPassResult] =
     useState<VerifyPassResponse | null>(null);
 
+  const canVerifyPass =
+    currentUser?.role === "admin" || currentUser?.role === "verifier";
+
   useEffect(() => {
     async function loadInitialData() {
       try {
         const healthResponse = await fetch("/api/health");
         if (!healthResponse.ok) {
-          throw new Error(`Health request failed with status ${healthResponse.status}`);
+          throw new Error(
+            `Health request failed with status ${healthResponse.status}`
+          );
         }
         const healthData: HealthResponse = await healthResponse.json();
         setHealth(healthData);
@@ -142,7 +147,7 @@ function App() {
 
           if (meData.role === "admin") {
             await Promise.all([loadAdminApplications(), loadAdminPasses()]);
-          } else {
+          } else if (meData.role === "resident") {
             await Promise.all([loadMyApplications(), loadMyPasses()]);
           }
         }
@@ -327,6 +332,9 @@ function App() {
     setApplicationError("");
     setAdminReviewMessage("");
     setAdminReviewError("");
+    setVerifyPassNumber("");
+    setVerifyPassError("");
+    setVerifyPassResult(null);
 
     try {
       const response = await fetch("/api/login", {
@@ -355,7 +363,7 @@ function App() {
 
       if (data.role === "admin") {
         await Promise.all([loadAdminApplications(), loadAdminPasses()]);
-      } else {
+      } else if (data.role === "resident") {
         await Promise.all([loadMyApplications(), loadMyPasses()]);
       }
     } catch (err) {
@@ -390,6 +398,9 @@ function App() {
     setApplicationError("");
     setAdminReviewMessage("");
     setAdminReviewError("");
+    setVerifyPassNumber("");
+    setVerifyPassError("");
+    setVerifyPassResult(null);
   }
 
   async function handleApplicationSubmit(event: FormEvent<HTMLFormElement>) {
@@ -492,7 +503,10 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/verify-pass?pass_number=${encodeURIComponent(verifyPassNumber)}`
+        `/api/verify-pass?pass_number=${encodeURIComponent(verifyPassNumber)}`,
+        {
+          credentials: "include",
+        }
       );
 
       const text = await response.text();
@@ -1366,95 +1380,97 @@ function App() {
               </div>
             )}
 
-            <section
-              style={{
-                backgroundColor: "#ffffff",
-                padding: "24px",
-                borderRadius: "16px",
-                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-              }}
-            >
-              <h2 style={{ marginTop: 0 }}>Verifier</h2>
+            {canVerifyPass && (
+              <section
+                style={{
+                  backgroundColor: "#ffffff",
+                  padding: "24px",
+                  borderRadius: "16px",
+                  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
+                }}
+              >
+                <h2 style={{ marginTop: 0 }}>Verifier</h2>
 
-              <form onSubmit={handleVerifyPass}>
-                <label style={{ display: "block", marginBottom: "16px" }}>
-                  <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                    Pass number
-                  </div>
-                  <input
-                    type="text"
-                    value={verifyPassNumber}
-                    onChange={(e) => setVerifyPassNumber(e.target.value)}
-                    placeholder="Enter pass number"
+                <form onSubmit={handleVerifyPass}>
+                  <label style={{ display: "block", marginBottom: "16px" }}>
+                    <div style={{ marginBottom: "6px", fontWeight: 700 }}>
+                      Pass number
+                    </div>
+                    <input
+                      type="text"
+                      value={verifyPassNumber}
+                      onChange={(e) => setVerifyPassNumber(e.target.value)}
+                      placeholder="Enter pass number"
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        border: "1px solid #ccc",
+                      }}
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={verifyPassLoading}
                     style={{
-                      width: "100%",
-                      padding: "10px",
+                      padding: "10px 16px",
                       borderRadius: "8px",
-                      border: "1px solid #ccc",
+                      border: "none",
+                      backgroundColor: "#0f766e",
+                      color: "white",
+                      cursor: "pointer",
                     }}
-                  />
-                </label>
+                  >
+                    {verifyPassLoading ? "Checking..." : "Verify Pass"}
+                  </button>
+                </form>
 
-                <button
-                  type="submit"
-                  disabled={verifyPassLoading}
-                  style={{
-                    padding: "10px 16px",
-                    borderRadius: "8px",
-                    border: "none",
-                    backgroundColor: "#0f766e",
-                    color: "white",
-                    cursor: "pointer",
-                  }}
-                >
-                  {verifyPassLoading ? "Checking..." : "Verify Pass"}
-                </button>
-              </form>
+                {verifyPassError && (
+                  <p
+                    style={{
+                      color: "#8a1c1c",
+                      marginTop: "16px",
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {verifyPassError}
+                  </p>
+                )}
 
-              {verifyPassError && (
-                <p
-                  style={{
-                    color: "#8a1c1c",
-                    marginTop: "16px",
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {verifyPassError}
-                </p>
-              )}
-
-              {verifyPassResult && (
-                <div
-                  style={{
-                    marginTop: "16px",
-                    padding: "14px",
-                    borderRadius: "10px",
-                    backgroundColor: verifyPassResult.valid
-                      ? "#e8f7ec"
-                      : "#ffe5e5",
-                    color: verifyPassResult.valid ? "#14532d" : "#8a1c1c",
-                  }}
-                >
-                  <p style={{ margin: "0 0 8px 0" }}>
-                    <strong>Result:</strong> {verifyPassResult.message}
-                  </p>
-                  <p style={{ margin: "0 0 8px 0" }}>
-                    <strong>Pass Number:</strong> {verifyPassResult.pass_number}
-                  </p>
-                  <p style={{ margin: "0 0 8px 0" }}>
-                    <strong>Status:</strong> {verifyPassResult.status}
-                  </p>
-                  <p style={{ margin: "0 0 8px 0" }}>
-                    <strong>Issued:</strong>{" "}
-                    {new Date(verifyPassResult.issued_at).toLocaleString()}
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    <strong>Expires:</strong>{" "}
-                    {new Date(verifyPassResult.expires_at).toLocaleString()}
-                  </p>
-                </div>
-              )}
-            </section>
+                {verifyPassResult && (
+                  <div
+                    style={{
+                      marginTop: "16px",
+                      padding: "14px",
+                      borderRadius: "10px",
+                      backgroundColor: verifyPassResult.valid
+                        ? "#e8f7ec"
+                        : "#ffe5e5",
+                      color: verifyPassResult.valid ? "#14532d" : "#8a1c1c",
+                    }}
+                  >
+                    <p style={{ margin: "0 0 8px 0" }}>
+                      <strong>Result:</strong> {verifyPassResult.message}
+                    </p>
+                    <p style={{ margin: "0 0 8px 0" }}>
+                      <strong>Pass Number:</strong> {verifyPassResult.pass_number}
+                    </p>
+                    <p style={{ margin: "0 0 8px 0" }}>
+                      <strong>Status:</strong> {verifyPassResult.status}
+                    </p>
+                    <p style={{ margin: "0 0 8px 0" }}>
+                      <strong>Issued:</strong>{" "}
+                      {new Date(verifyPassResult.issued_at).toLocaleString()}
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      <strong>Expires:</strong>{" "}
+                      {new Date(verifyPassResult.expires_at).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </section>
+            )}
           </>
         )}
       </div>
