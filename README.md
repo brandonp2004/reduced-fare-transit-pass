@@ -4,7 +4,7 @@ A full-stack transit eligibility and pass issuance application that simulates a 
 
 ## Overview
 
-This project was built to demonstrate a realistic civic-tech style workflow rather than a generic CRUD app.
+This project was built to demonstrate a realistic civic-tech workflow instead of another generic CRUD app.
 
 The system supports three roles:
 
@@ -101,7 +101,7 @@ The Go backend:
 
 ## Screenshots
 
-> Add your screenshots to `docs/screenshots/` and update these if needed.
+Add your screenshots to `docs/screenshots/` using the filenames below.
 
 ### Resident dashboard
 ![Resident dashboard](docs/screenshots/resident-dashboard.png)
@@ -121,6 +121,134 @@ The Go backend:
 
 ### 1. Start PostgreSQL
 
+From the project root:
+
 ```powershell
 cd infra/docker
 docker compose up -d
+```
+
+### 2. Start the backend
+
+From the project root:
+
+```powershell
+cd backend
+go run .\cmd\server\
+```
+
+The backend runs at:
+
+```text
+http://localhost:8080
+```
+
+### 3. Start the frontend
+
+From the project root:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs at:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## API Routes
+
+### Public
+- `GET /api/health`
+- `GET /api/db-health`
+- `POST /api/register`
+- `POST /api/login`
+
+### Authenticated
+- `POST /api/logout`
+- `GET /api/me`
+
+### Resident
+- `POST /api/applications`
+- `GET /api/applications/me`
+- `GET /api/passes/me`
+
+### Admin
+- `GET /api/admin/applications`
+- `POST /api/admin/applications/review`
+- `GET /api/admin/passes`
+
+### Verifier / Admin
+- `GET /api/verify-pass?pass_number=...`
+
+---
+
+## What This Project Demonstrates
+
+- full-stack application design
+- REST API development in Go
+- relational database schema design
+- role-based authorization
+- session authentication with cookies
+- password hashing and credential handling
+- admin approval workflows
+- automatic pass issuance logic
+- verifier-facing validation flow
+- Docker-based local development setup
+
+---
+
+## Current Limitations
+
+- UI is improved but still not production-grade
+- no audit log for who reviewed each application
+- no renewal or expiration management workflow beyond stored expiration date
+- no file upload or identity document verification
+- no automated test suite yet
+- no deployment target yet
+
+---
+
+## Future Improvements
+
+- add audit logging for admin review actions
+- add pass renewal and revocation management
+- add better navigation and role-specific landing pages
+- add automated backend and frontend tests
+- add deployment configuration
+- add document upload / proof-of-eligibility flow
+- improve visual design and mobile responsiveness
+
+---
+
+## Repository Structure
+
+```text
+backend/
+  cmd/server/
+  internal/
+    applications/
+    auth/
+    db/
+    middleware/
+    passes/
+    sessions/
+    users/
+
+db/
+  init/
+
+docs/
+  screenshots/
+
+frontend/
+  src/
+
+infra/
+  docker/
+```
