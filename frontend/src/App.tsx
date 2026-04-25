@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 type HealthResponse = {
@@ -50,6 +50,212 @@ type VerifyPassResponse = {
   valid: boolean;
   message: string;
 };
+
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "success"
+  | "danger"
+  | "teal"
+  | "purple";
+
+function baseInputStyle() {
+  return {
+    width: "100%",
+    padding: "11px 12px",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
+    backgroundColor: "#ffffff",
+    fontSize: "14px",
+    boxSizing: "border-box" as const,
+  };
+}
+
+function StatusPill({ status }: { status: string }) {
+  const normalized = status.toLowerCase();
+
+  let bg = "#eef2ff";
+  let color = "#3730a3";
+
+  if (
+    normalized === "approved" ||
+    normalized === "active" ||
+    normalized === "success" ||
+    normalized === "ok"
+  ) {
+    bg = "#e8f7ec";
+    color = "#166534";
+  } else if (normalized === "pending") {
+    bg = "#fff7e6";
+    color = "#92400e";
+  } else if (
+    normalized === "rejected" ||
+    normalized === "revoked" ||
+    normalized === "expired" ||
+    normalized === "error"
+  ) {
+    bg = "#ffe5e5";
+    color = "#991b1b";
+  }
+
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "4px 10px",
+        borderRadius: "999px",
+        backgroundColor: bg,
+        color,
+        fontSize: "12px",
+        fontWeight: 700,
+        textTransform: "capitalize",
+      }}
+    >
+      {status}
+    </span>
+  );
+}
+
+function AppShellCard({
+  title,
+  subtitle,
+  actions,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      style={{
+        backgroundColor: "#ffffff",
+        padding: "24px",
+        borderRadius: "18px",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+        border: "1px solid #e5e7eb",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "16px",
+          marginBottom: "16px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h2 style={{ margin: 0, fontSize: "22px" }}>{title}</h2>
+          {subtitle && (
+            <p style={{ margin: "6px 0 0 0", color: "#6b7280" }}>{subtitle}</p>
+          )}
+        </div>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  type = "button",
+  disabled = false,
+  variant = "primary",
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  type?: "button" | "submit";
+  disabled?: boolean;
+  variant?: ButtonVariant;
+}) {
+  const palette: Record<ButtonVariant, { bg: string; color: string }> = {
+    primary: { bg: "#1d4ed8", color: "#ffffff" },
+    secondary: { bg: "#374151", color: "#ffffff" },
+    success: { bg: "#166534", color: "#ffffff" },
+    danger: { bg: "#b91c1c", color: "#ffffff" },
+    teal: { bg: "#0f766e", color: "#ffffff" },
+    purple: { bg: "#7c3aed", color: "#ffffff" },
+  };
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: "10px 16px",
+        borderRadius: "10px",
+        border: "none",
+        backgroundColor: palette[variant].bg,
+        color: palette[variant].color,
+        cursor: disabled ? "not-allowed" : "pointer",
+        fontWeight: 700,
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LabeledInput({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label style={{ display: "block", marginBottom: "16px" }}>
+      <div style={{ marginBottom: "6px", fontWeight: 700 }}>{label}</div>
+      {children}
+    </label>
+  );
+}
+
+function InfoMessage({
+  text,
+  tone,
+}: {
+  text: string;
+  tone: "success" | "error";
+}) {
+  return (
+    <p
+      style={{
+        marginTop: "14px",
+        padding: "12px 14px",
+        borderRadius: "10px",
+        backgroundColor: tone === "success" ? "#e8f7ec" : "#ffe5e5",
+        color: tone === "success" ? "#166534" : "#991b1b",
+        whiteSpace: "pre-wrap",
+      }}
+    >
+      {text}
+    </p>
+  );
+}
+
+function DataCard({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #e5e7eb",
+        borderRadius: "14px",
+        padding: "16px",
+        marginBottom: "12px",
+        backgroundColor: "#fafafa",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -152,7 +358,7 @@ function App() {
           }
         }
       } catch {
-        // Ignore missing/invalid session on first load.
+        // ignore missing session
       } finally {
         setSessionLoading(false);
       }
@@ -384,7 +590,7 @@ function App() {
         credentials: "include",
       });
     } catch {
-      // Ignore logout fetch error for UI reset.
+      // ignore
     }
 
     setCurrentUser(null);
@@ -533,7 +739,8 @@ function App() {
       style={{
         minHeight: "100vh",
         padding: "24px",
-        backgroundColor: "#f4f7fb",
+        background:
+          "linear-gradient(180deg, #eef4ff 0%, #f8fbff 40%, #f4f7fb 100%)",
       }}
     >
       <div
@@ -547,69 +754,71 @@ function App() {
         <section
           style={{
             backgroundColor: "#ffffff",
-            padding: "32px",
-            borderRadius: "16px",
-            boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
+            padding: "28px 32px",
+            borderRadius: "22px",
+            boxShadow: "0 14px 40px rgba(15, 23, 42, 0.08)",
+            border: "1px solid #e5e7eb",
           }}
         >
-          <h1 style={{ marginTop: 0, marginBottom: "12px" }}>
-            Reduced-Fare Transit Pass
-          </h1>
-
-          <p style={{ marginTop: 0, color: "#444" }}>
-            Resident application, agency review, pass issuance, and verifier
-            validation.
-          </p>
-
-          <hr style={{ margin: "24px 0" }} />
-
-          <h2>Backend connection</h2>
-
-          {healthLoading && <p>Checking backend health...</p>}
-
-          {!healthLoading && healthError && (
-            <div
-              style={{
-                padding: "12px",
-                borderRadius: "8px",
-                backgroundColor: "#ffe5e5",
-                color: "#8a1c1c",
-              }}
-            >
-              <strong>Backend error:</strong> {healthError}
-            </div>
-          )}
-
-          {!healthLoading && !healthError && health && (
-            <div
-              style={{
-                padding: "12px",
-                borderRadius: "8px",
-                backgroundColor: "#e8f7ec",
-                color: "#14532d",
-              }}
-            >
-              <p style={{ margin: "0 0 8px 0" }}>
-                <strong>Status:</strong> {health.status}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "20px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <p
+                style={{
+                  margin: 0,
+                  color: "#2563eb",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  fontSize: "12px",
+                }}
+              >
+                Gov-tech workflow demo
               </p>
-              <p style={{ margin: 0 }}>
-                <strong>Service:</strong> {health.service}
+              <h1 style={{ margin: "8px 0 10px 0", fontSize: "34px" }}>
+                Reduced-Fare Transit Pass
+              </h1>
+              <p style={{ margin: 0, color: "#6b7280", maxWidth: "720px" }}>
+                Resident application, admin review, pass issuance, and verifier
+                validation in one full-stack system.
               </p>
             </div>
-          )}
+
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              {healthLoading && <span>Checking backend...</span>}
+              {!healthLoading && healthError && <StatusPill status="error" />}
+              {!healthLoading && !healthError && health && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "8px 12px",
+                    borderRadius: "999px",
+                    backgroundColor: "#e8f7ec",
+                    color: "#166534",
+                    fontWeight: 700,
+                  }}
+                >
+                  Backend: {health.status}
+                </span>
+              )}
+              {currentUser && <StatusPill status={currentUser.role} />}
+            </div>
+          </div>
         </section>
 
         {sessionLoading && (
-          <section
-            style={{
-              backgroundColor: "#ffffff",
-              padding: "24px",
-              borderRadius: "16px",
-              boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-            }}
-          >
-            <p>Checking session...</p>
-          </section>
+          <AppShellCard title="Checking session">
+            <p style={{ margin: 0, color: "#6b7280" }}>
+              Looking for an existing login cookie.
+            </p>
+          </AppShellCard>
         )}
 
         {!sessionLoading && (
@@ -622,216 +831,118 @@ function App() {
                   gap: "24px",
                 }}
               >
-                <section
-                  style={{
-                    backgroundColor: "#ffffff",
-                    padding: "24px",
-                    borderRadius: "16px",
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                  }}
+                <AppShellCard
+                  title="Register"
+                  subtitle="Create a resident, admin, or verifier account."
                 >
-                  <h2 style={{ marginTop: 0 }}>Register</h2>
-
                   <form onSubmit={handleRegister}>
-                    <label style={{ display: "block", marginBottom: "16px" }}>
-                      <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                        Email
-                      </div>
+                    <LabeledInput label="Email">
                       <input
                         type="email"
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "8px",
-                          border: "1px solid #ccc",
-                        }}
+                        style={baseInputStyle()}
                       />
-                    </label>
+                    </LabeledInput>
 
-                    <label style={{ display: "block", marginBottom: "16px" }}>
-                      <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                        Password
-                      </div>
+                    <LabeledInput label="Password">
                       <input
                         type="password"
                         value={registerPassword}
                         onChange={(e) => setRegisterPassword(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "8px",
-                          border: "1px solid #ccc",
-                        }}
+                        style={baseInputStyle()}
                       />
-                    </label>
+                    </LabeledInput>
 
-                    <label style={{ display: "block", marginBottom: "16px" }}>
-                      <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                        Role
-                      </div>
+                    <LabeledInput label="Role">
                       <select
                         value={registerRole}
                         onChange={(e) => setRegisterRole(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "8px",
-                          border: "1px solid #ccc",
-                        }}
+                        style={baseInputStyle()}
                       >
                         <option value="resident">resident</option>
                         <option value="admin">admin</option>
                         <option value="verifier">verifier</option>
                       </select>
-                    </label>
+                    </LabeledInput>
 
-                    <button
-                      type="submit"
-                      disabled={registerLoading}
-                      style={{
-                        padding: "10px 16px",
-                        borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "#1d4ed8",
-                        color: "white",
-                        cursor: "pointer",
-                      }}
-                    >
+                    <ActionButton type="submit" disabled={registerLoading}>
                       {registerLoading ? "Registering..." : "Register"}
-                    </button>
+                    </ActionButton>
                   </form>
 
                   {registerMessage && (
-                    <p style={{ color: "#14532d", marginTop: "16px" }}>
-                      {registerMessage}
-                    </p>
+                    <InfoMessage text={registerMessage} tone="success" />
                   )}
-
                   {registerError && (
-                    <p
-                      style={{
-                        color: "#8a1c1c",
-                        marginTop: "16px",
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {registerError}
-                    </p>
+                    <InfoMessage text={registerError} tone="error" />
                   )}
-                </section>
+                </AppShellCard>
 
-                <section
-                  style={{
-                    backgroundColor: "#ffffff",
-                    padding: "24px",
-                    borderRadius: "16px",
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                  }}
+                <AppShellCard
+                  title="Login"
+                  subtitle="Sign in and the session will survive refresh."
                 >
-                  <h2 style={{ marginTop: 0 }}>Login</h2>
-
                   <form onSubmit={handleLogin}>
-                    <label style={{ display: "block", marginBottom: "16px" }}>
-                      <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                        Email
-                      </div>
+                    <LabeledInput label="Email">
                       <input
                         type="email"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "8px",
-                          border: "1px solid #ccc",
-                        }}
+                        style={baseInputStyle()}
                       />
-                    </label>
+                    </LabeledInput>
 
-                    <label style={{ display: "block", marginBottom: "16px" }}>
-                      <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                        Password
-                      </div>
+                    <LabeledInput label="Password">
                       <input
                         type="password"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "8px",
-                          border: "1px solid #ccc",
-                        }}
+                        style={baseInputStyle()}
                       />
-                    </label>
+                    </LabeledInput>
 
-                    <button
+                    <ActionButton
                       type="submit"
                       disabled={loginLoading}
-                      style={{
-                        padding: "10px 16px",
-                        borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "#166534",
-                        color: "white",
-                        cursor: "pointer",
-                      }}
+                      variant="success"
                     >
                       {loginLoading ? "Logging in..." : "Login"}
-                    </button>
+                    </ActionButton>
                   </form>
 
                   {loginMessage && (
-                    <p style={{ color: "#14532d", marginTop: "16px" }}>
-                      {loginMessage}
-                    </p>
+                    <InfoMessage text={loginMessage} tone="success" />
                   )}
-
-                  {loginError && (
-                    <p
-                      style={{
-                        color: "#8a1c1c",
-                        marginTop: "16px",
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {loginError}
-                    </p>
-                  )}
-                </section>
+                  {loginError && <InfoMessage text={loginError} tone="error" />}
+                </AppShellCard>
               </div>
             )}
 
             {currentUser && (
-              <section
-                style={{
-                  backgroundColor: "#ffffff",
-                  padding: "24px",
-                  borderRadius: "16px",
-                  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                }}
+              <AppShellCard
+                title="Current session"
+                subtitle={`Signed in as ${currentUser.email}`}
+                actions={
+                  <ActionButton onClick={handleLogout} variant="danger">
+                    Logout
+                  </ActionButton>
+                }
               >
-                <h2 style={{ marginTop: 0 }}>Current user</h2>
-                <p>
-                  {currentUser.email} ({currentUser.role})
-                </p>
-                <button
-                  type="button"
-                  onClick={handleLogout}
+                <div
                   style={{
-                    padding: "10px 16px",
-                    borderRadius: "8px",
-                    border: "none",
-                    backgroundColor: "#b91c1c",
-                    color: "white",
-                    cursor: "pointer",
+                    display: "flex",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                    alignItems: "center",
                   }}
                 >
-                  Logout
-                </button>
-              </section>
+                  <StatusPill status={currentUser.role} />
+                  <span style={{ color: "#6b7280" }}>
+                    Created {new Date(currentUser.created_at).toLocaleString()}
+                  </span>
+                </div>
+              </AppShellCard>
             )}
 
             {currentUser?.role === "resident" && (
@@ -843,194 +954,125 @@ function App() {
                     gap: "24px",
                   }}
                 >
-                  <section
-                    style={{
-                      backgroundColor: "#ffffff",
-                      padding: "24px",
-                      borderRadius: "16px",
-                      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                    }}
+                  <AppShellCard
+                    title="Submit reduced-fare application"
+                    subtitle="Applications attach to the authenticated resident automatically."
                   >
-                    <h2 style={{ marginTop: 0 }}>
-                      Submit Reduced-Fare Application
-                    </h2>
-
                     <form onSubmit={handleApplicationSubmit}>
-                      <label style={{ display: "block", marginBottom: "16px" }}>
-                        <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                          Full name
-                        </div>
+                      <LabeledInput label="Full name">
                         <input
                           type="text"
                           value={applicationFullName}
                           onChange={(e) =>
                             setApplicationFullName(e.target.value)
                           }
-                          style={{
-                            width: "100%",
-                            padding: "10px",
-                            borderRadius: "8px",
-                            border: "1px solid #ccc",
-                          }}
+                          style={baseInputStyle()}
                         />
-                      </label>
+                      </LabeledInput>
 
-                      <label style={{ display: "block", marginBottom: "16px" }}>
-                        <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                          Date of birth
-                        </div>
+                      <LabeledInput label="Date of birth">
                         <input
                           type="date"
                           value={applicationDateOfBirth}
                           onChange={(e) =>
                             setApplicationDateOfBirth(e.target.value)
                           }
-                          style={{
-                            width: "100%",
-                            padding: "10px",
-                            borderRadius: "8px",
-                            border: "1px solid #ccc",
-                          }}
+                          style={baseInputStyle()}
                         />
-                      </label>
+                      </LabeledInput>
 
-                      <label style={{ display: "block", marginBottom: "16px" }}>
-                        <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                          Transit ID number
-                        </div>
+                      <LabeledInput label="Transit ID number">
                         <input
                           type="text"
                           value={applicationTransitIdNumber}
                           onChange={(e) =>
                             setApplicationTransitIdNumber(e.target.value)
                           }
-                          style={{
-                            width: "100%",
-                            padding: "10px",
-                            borderRadius: "8px",
-                            border: "1px solid #ccc",
-                          }}
+                          style={baseInputStyle()}
                         />
-                      </label>
+                      </LabeledInput>
 
-                      <label style={{ display: "block", marginBottom: "16px" }}>
-                        <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                          Eligibility reason
-                        </div>
+                      <LabeledInput label="Eligibility reason">
                         <textarea
                           value={applicationEligibilityReason}
                           onChange={(e) =>
                             setApplicationEligibilityReason(e.target.value)
                           }
                           rows={4}
-                          style={{
-                            width: "100%",
-                            padding: "10px",
-                            borderRadius: "8px",
-                            border: "1px solid #ccc",
-                            resize: "vertical",
-                          }}
+                          style={{ ...baseInputStyle(), resize: "vertical" }}
                         />
-                      </label>
+                      </LabeledInput>
 
-                      <button
+                      <ActionButton
                         type="submit"
                         disabled={applicationLoading}
-                        style={{
-                          padding: "10px 16px",
-                          borderRadius: "8px",
-                          border: "none",
-                          backgroundColor: "#7c3aed",
-                          color: "white",
-                          cursor: "pointer",
-                        }}
+                        variant="purple"
                       >
                         {applicationLoading
                           ? "Submitting..."
                           : "Submit Application"}
-                      </button>
+                      </ActionButton>
                     </form>
 
                     {applicationMessage && (
-                      <p style={{ color: "#14532d", marginTop: "16px" }}>
-                        {applicationMessage}
-                      </p>
+                      <InfoMessage text={applicationMessage} tone="success" />
                     )}
-
                     {applicationError && (
-                      <p
-                        style={{
-                          color: "#8a1c1c",
-                          marginTop: "16px",
-                          whiteSpace: "pre-wrap",
-                        }}
+                      <InfoMessage text={applicationError} tone="error" />
+                    )}
+                  </AppShellCard>
+
+                  <AppShellCard
+                    title="My applications"
+                    subtitle="Track pending, approved, and rejected decisions."
+                    actions={
+                      <ActionButton
+                        onClick={loadMyApplications}
+                        disabled={applicationsLoading}
+                        variant="secondary"
                       >
-                        {applicationError}
-                      </p>
-                    )}
-                  </section>
-
-                  <section
-                    style={{
-                      backgroundColor: "#ffffff",
-                      padding: "24px",
-                      borderRadius: "16px",
-                      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                    }}
+                        {applicationsLoading
+                          ? "Refreshing..."
+                          : "Refresh Applications"}
+                      </ActionButton>
+                    }
                   >
-                    <h2 style={{ marginTop: 0 }}>My Applications</h2>
-
-                    <button
-                      type="button"
-                      onClick={loadMyApplications}
-                      disabled={applicationsLoading}
-                      style={{
-                        marginBottom: "16px",
-                        padding: "10px 16px",
-                        borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "#374151",
-                        color: "white",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {applicationsLoading
-                        ? "Refreshing..."
-                        : "Refresh Applications"}
-                    </button>
-
                     {applicationsError && (
-                      <p style={{ color: "#8a1c1c", whiteSpace: "pre-wrap" }}>
-                        {applicationsError}
-                      </p>
+                      <InfoMessage text={applicationsError} tone="error" />
                     )}
 
-                    {applicationsLoading && <p>Loading applications...</p>}
+                    {applicationsLoading && (
+                      <p style={{ color: "#6b7280", margin: 0 }}>
+                        Loading applications...
+                      </p>
+                    )}
 
                     {!applicationsLoading && applications.length === 0 && (
-                      <p>No applications found yet.</p>
+                      <p style={{ color: "#6b7280", margin: 0 }}>
+                        No applications found yet.
+                      </p>
                     )}
 
                     {!applicationsLoading &&
                       applications.map((app) => (
-                        <div
-                          key={app.id}
-                          style={{
-                            border: "1px solid #ddd",
-                            borderRadius: "10px",
-                            padding: "14px",
-                            marginBottom: "12px",
-                            backgroundColor: "#fafafa",
-                          }}
-                        >
+                        <DataCard key={app.id}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: "12px",
+                              alignItems: "center",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            <strong>Application #{app.id}</strong>
+                            <StatusPill status={app.status} />
+                          </div>
                           <p style={{ margin: "0 0 8px 0" }}>
-                            <strong>Application ID:</strong> {app.id}
+                            <strong>Name:</strong> {app.full_name}
                           </p>
                           <p style={{ margin: "0 0 8px 0" }}>
-                            <strong>Full name:</strong> {app.full_name}
-                          </p>
-                          <p style={{ margin: "0 0 8px 0" }}>
-                            <strong>Date of birth:</strong> {app.date_of_birth}
+                            <strong>DOB:</strong> {app.date_of_birth}
                           </p>
                           <p style={{ margin: "0 0 8px 0" }}>
                             <strong>Transit ID:</strong> {app.transit_id_number}
@@ -1039,80 +1081,63 @@ function App() {
                             <strong>Eligibility:</strong>{" "}
                             {app.eligibility_reason}
                           </p>
-                          <p style={{ margin: "0 0 8px 0" }}>
-                            <strong>Status:</strong> {app.status}
+                          <p style={{ margin: 0, color: "#6b7280" }}>
+                            Created {new Date(app.created_at).toLocaleString()}
                           </p>
-                          <p style={{ margin: 0 }}>
-                            <strong>Created:</strong>{" "}
-                            {new Date(app.created_at).toLocaleString()}
-                          </p>
-                        </div>
+                        </DataCard>
                       ))}
-                  </section>
+                  </AppShellCard>
                 </div>
 
-                <section
-                  style={{
-                    backgroundColor: "#ffffff",
-                    padding: "24px",
-                    borderRadius: "16px",
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                  }}
+                <AppShellCard
+                  title="My passes"
+                  subtitle="Issued automatically when an application is approved."
+                  actions={
+                    <ActionButton
+                      onClick={loadMyPasses}
+                      disabled={residentPassesLoading}
+                      variant="secondary"
+                    >
+                      {residentPassesLoading ? "Refreshing..." : "Refresh Passes"}
+                    </ActionButton>
+                  }
                 >
-                  <h2 style={{ marginTop: 0 }}>My Passes</h2>
-
-                  <button
-                    type="button"
-                    onClick={loadMyPasses}
-                    disabled={residentPassesLoading}
-                    style={{
-                      marginBottom: "16px",
-                      padding: "10px 16px",
-                      borderRadius: "8px",
-                      border: "none",
-                      backgroundColor: "#374151",
-                      color: "white",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {residentPassesLoading ? "Refreshing..." : "Refresh Passes"}
-                  </button>
-
                   {residentPassesError && (
-                    <p style={{ color: "#8a1c1c", whiteSpace: "pre-wrap" }}>
-                      {residentPassesError}
+                    <InfoMessage text={residentPassesError} tone="error" />
+                  )}
+
+                  {residentPassesLoading && (
+                    <p style={{ color: "#6b7280", margin: 0 }}>
+                      Loading passes...
                     </p>
                   )}
 
-                  {residentPassesLoading && <p>Loading passes...</p>}
-
                   {!residentPassesLoading && residentPasses.length === 0 && (
-                    <p>No passes issued yet.</p>
+                    <p style={{ color: "#6b7280", margin: 0 }}>
+                      No passes issued yet.
+                    </p>
                   )}
 
                   {!residentPassesLoading &&
                     residentPasses.map((pass) => (
-                      <div
-                        key={pass.id}
-                        style={{
-                          border: "1px solid #ddd",
-                          borderRadius: "10px",
-                          padding: "14px",
-                          marginBottom: "12px",
-                          backgroundColor: "#fafafa",
-                        }}
-                      >
-                        <p style={{ margin: "0 0 8px 0" }}>
-                          <strong>Pass ID:</strong> {pass.id}
-                        </p>
+                      <DataCard key={pass.id}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: "12px",
+                            alignItems: "center",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          <strong>Pass #{pass.id}</strong>
+                          <StatusPill status={pass.status} />
+                        </div>
                         <p style={{ margin: "0 0 8px 0" }}>
                           <strong>Application ID:</strong> {pass.application_id}
                         </p>
                         <p style={{ margin: "0 0 8px 0" }}>
                           <strong>Pass Number:</strong> {pass.pass_number}
-                        </p>
-                        <p style={{ margin: "0 0 8px 0" }}>
-                          <strong>Status:</strong> {pass.status}
                         </p>
                         <p style={{ margin: "0 0 8px 0" }}>
                           <strong>Issued:</strong>{" "}
@@ -1122,9 +1147,9 @@ function App() {
                           <strong>Expires:</strong>{" "}
                           {new Date(pass.expires_at).toLocaleString()}
                         </p>
-                      </div>
+                      </DataCard>
                     ))}
-                </section>
+                </AppShellCard>
               </>
             )}
 
@@ -1136,87 +1161,59 @@ function App() {
                   gap: "24px",
                 }}
               >
-                <section
-                  style={{
-                    backgroundColor: "#ffffff",
-                    padding: "24px",
-                    borderRadius: "16px",
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                  }}
+                <AppShellCard
+                  title="Admin review queue"
+                  subtitle="Approve or reject resident applications."
+                  actions={
+                    <ActionButton
+                      onClick={loadAdminApplications}
+                      disabled={adminApplicationsLoading}
+                      variant="secondary"
+                    >
+                      {adminApplicationsLoading
+                        ? "Refreshing..."
+                        : "Refresh All Applications"}
+                    </ActionButton>
+                  }
                 >
-                  <h2 style={{ marginTop: 0 }}>Admin Review Queue</h2>
-
-                  <button
-                    type="button"
-                    onClick={loadAdminApplications}
-                    disabled={adminApplicationsLoading}
-                    style={{
-                      marginBottom: "16px",
-                      padding: "10px 16px",
-                      borderRadius: "8px",
-                      border: "none",
-                      backgroundColor: "#374151",
-                      color: "white",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {adminApplicationsLoading
-                      ? "Refreshing..."
-                      : "Refresh All Applications"}
-                  </button>
-
                   {adminReviewMessage && (
-                    <p style={{ color: "#14532d", marginBottom: "16px" }}>
-                      {adminReviewMessage}
-                    </p>
+                    <InfoMessage text={adminReviewMessage} tone="success" />
                   )}
-
                   {adminReviewError && (
-                    <p
-                      style={{
-                        color: "#8a1c1c",
-                        marginBottom: "16px",
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {adminReviewError}
-                    </p>
+                    <InfoMessage text={adminReviewError} tone="error" />
                   )}
-
                   {adminApplicationsError && (
-                    <p
-                      style={{
-                        color: "#8a1c1c",
-                        marginBottom: "16px",
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {adminApplicationsError}
+                    <InfoMessage text={adminApplicationsError} tone="error" />
+                  )}
+
+                  {adminApplicationsLoading && (
+                    <p style={{ color: "#6b7280", margin: 0 }}>
+                      Loading all applications...
                     </p>
                   )}
 
-                  {adminApplicationsLoading && <p>Loading all applications...</p>}
-
-                  {!adminApplicationsLoading &&
-                    adminApplications.length === 0 && (
-                      <p>No applications available.</p>
-                    )}
+                  {!adminApplicationsLoading && adminApplications.length === 0 && (
+                    <p style={{ color: "#6b7280", margin: 0 }}>
+                      No applications available.
+                    </p>
+                  )}
 
                   {!adminApplicationsLoading &&
                     adminApplications.map((app) => (
-                      <div
-                        key={app.id}
-                        style={{
-                          border: "1px solid #ddd",
-                          borderRadius: "10px",
-                          padding: "14px",
-                          marginBottom: "12px",
-                          backgroundColor: "#fafafa",
-                        }}
-                      >
-                        <p style={{ margin: "0 0 8px 0" }}>
-                          <strong>Application ID:</strong> {app.id}
-                        </p>
+                      <DataCard key={app.id}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: "12px",
+                            alignItems: "center",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          <strong>Application #{app.id}</strong>
+                          <StatusPill status={app.status} />
+                        </div>
+
                         <p style={{ margin: "0 0 8px 0" }}>
                           <strong>User ID:</strong> {app.user_id}
                         </p>
@@ -1224,7 +1221,7 @@ function App() {
                           <strong>Full name:</strong> {app.full_name}
                         </p>
                         <p style={{ margin: "0 0 8px 0" }}>
-                          <strong>Date of birth:</strong> {app.date_of_birth}
+                          <strong>DOB:</strong> {app.date_of_birth}
                         </p>
                         <p style={{ margin: "0 0 8px 0" }}>
                           <strong>Transit ID:</strong> {app.transit_id_number}
@@ -1233,23 +1230,18 @@ function App() {
                           <strong>Eligibility:</strong>{" "}
                           {app.eligibility_reason}
                         </p>
-                        <p style={{ margin: "0 0 8px 0" }}>
-                          <strong>Status:</strong> {app.status}
+                        <p style={{ margin: "0 0 8px 0", color: "#6b7280" }}>
+                          Created {new Date(app.created_at).toLocaleString()}
                         </p>
-                        <p style={{ margin: "0 0 8px 0" }}>
-                          <strong>Created:</strong>{" "}
-                          {new Date(app.created_at).toLocaleString()}
-                        </p>
-                        <p style={{ margin: "0 0 12px 0" }}>
-                          <strong>Reviewed:</strong>{" "}
+                        <p style={{ margin: "0 0 14px 0", color: "#6b7280" }}>
+                          Reviewed{" "}
                           {app.reviewed_at
                             ? new Date(app.reviewed_at).toLocaleString()
-                            : "Not reviewed yet"}
+                            : "not yet"}
                         </p>
 
                         <div style={{ display: "flex", gap: "12px" }}>
-                          <button
-                            type="button"
+                          <ActionButton
                             onClick={() =>
                               handleReviewApplication(app.id, "approved")
                             }
@@ -1257,22 +1249,14 @@ function App() {
                               adminReviewLoadingId === app.id ||
                               app.status === "approved"
                             }
-                            style={{
-                              padding: "10px 16px",
-                              borderRadius: "8px",
-                              border: "none",
-                              backgroundColor: "#166534",
-                              color: "white",
-                              cursor: "pointer",
-                            }}
+                            variant="success"
                           >
                             {adminReviewLoadingId === app.id
                               ? "Working..."
                               : "Approve"}
-                          </button>
+                          </ActionButton>
 
-                          <button
-                            type="button"
+                          <ActionButton
                             onClick={() =>
                               handleReviewApplication(app.id, "rejected")
                             }
@@ -1280,80 +1264,61 @@ function App() {
                               adminReviewLoadingId === app.id ||
                               app.status === "rejected"
                             }
-                            style={{
-                              padding: "10px 16px",
-                              borderRadius: "8px",
-                              border: "none",
-                              backgroundColor: "#b91c1c",
-                              color: "white",
-                              cursor: "pointer",
-                            }}
+                            variant="danger"
                           >
                             {adminReviewLoadingId === app.id
                               ? "Working..."
                               : "Reject"}
-                          </button>
+                          </ActionButton>
                         </div>
-                      </div>
+                      </DataCard>
                     ))}
-                </section>
+                </AppShellCard>
 
-                <section
-                  style={{
-                    backgroundColor: "#ffffff",
-                    padding: "24px",
-                    borderRadius: "16px",
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                  }}
+                <AppShellCard
+                  title="Issued passes"
+                  subtitle="All passes currently in the system."
+                  actions={
+                    <ActionButton
+                      onClick={loadAdminPasses}
+                      disabled={adminPassesLoading}
+                      variant="secondary"
+                    >
+                      {adminPassesLoading ? "Refreshing..." : "Refresh All Passes"}
+                    </ActionButton>
+                  }
                 >
-                  <h2 style={{ marginTop: 0 }}>Issued Passes</h2>
-
-                  <button
-                    type="button"
-                    onClick={loadAdminPasses}
-                    disabled={adminPassesLoading}
-                    style={{
-                      marginBottom: "16px",
-                      padding: "10px 16px",
-                      borderRadius: "8px",
-                      border: "none",
-                      backgroundColor: "#374151",
-                      color: "white",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {adminPassesLoading
-                      ? "Refreshing..."
-                      : "Refresh All Passes"}
-                  </button>
-
                   {adminPassesError && (
-                    <p style={{ color: "#8a1c1c", whiteSpace: "pre-wrap" }}>
-                      {adminPassesError}
+                    <InfoMessage text={adminPassesError} tone="error" />
+                  )}
+
+                  {adminPassesLoading && (
+                    <p style={{ color: "#6b7280", margin: 0 }}>
+                      Loading all passes...
                     </p>
                   )}
 
-                  {adminPassesLoading && <p>Loading all passes...</p>}
-
                   {!adminPassesLoading && adminPasses.length === 0 && (
-                    <p>No passes issued yet.</p>
+                    <p style={{ color: "#6b7280", margin: 0 }}>
+                      No passes issued yet.
+                    </p>
                   )}
 
                   {!adminPassesLoading &&
                     adminPasses.map((pass) => (
-                      <div
-                        key={pass.id}
-                        style={{
-                          border: "1px solid #ddd",
-                          borderRadius: "10px",
-                          padding: "14px",
-                          marginBottom: "12px",
-                          backgroundColor: "#fafafa",
-                        }}
-                      >
-                        <p style={{ margin: "0 0 8px 0" }}>
-                          <strong>Pass ID:</strong> {pass.id}
-                        </p>
+                      <DataCard key={pass.id}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: "12px",
+                            alignItems: "center",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          <strong>Pass #{pass.id}</strong>
+                          <StatusPill status={pass.status} />
+                        </div>
                         <p style={{ margin: "0 0 8px 0" }}>
                           <strong>Application ID:</strong> {pass.application_id}
                         </p>
@@ -1364,9 +1329,6 @@ function App() {
                           <strong>Pass Number:</strong> {pass.pass_number}
                         </p>
                         <p style={{ margin: "0 0 8px 0" }}>
-                          <strong>Status:</strong> {pass.status}
-                        </p>
-                        <p style={{ margin: "0 0 8px 0" }}>
                           <strong>Issued:</strong>{" "}
                           {new Date(pass.issued_at).toLocaleString()}
                         </p>
@@ -1374,80 +1336,51 @@ function App() {
                           <strong>Expires:</strong>{" "}
                           {new Date(pass.expires_at).toLocaleString()}
                         </p>
-                      </div>
+                      </DataCard>
                     ))}
-                </section>
+                </AppShellCard>
               </div>
             )}
 
             {canVerifyPass && (
-              <section
-                style={{
-                  backgroundColor: "#ffffff",
-                  padding: "24px",
-                  borderRadius: "16px",
-                  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                }}
+              <AppShellCard
+                title="Verifier"
+                subtitle="Check whether a pass number is active and not expired."
               >
-                <h2 style={{ marginTop: 0 }}>Verifier</h2>
-
                 <form onSubmit={handleVerifyPass}>
-                  <label style={{ display: "block", marginBottom: "16px" }}>
-                    <div style={{ marginBottom: "6px", fontWeight: 700 }}>
-                      Pass number
-                    </div>
+                  <LabeledInput label="Pass number">
                     <input
                       type="text"
                       value={verifyPassNumber}
                       onChange={(e) => setVerifyPassNumber(e.target.value)}
                       placeholder="Enter pass number"
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        borderRadius: "8px",
-                        border: "1px solid #ccc",
-                      }}
+                      style={baseInputStyle()}
                     />
-                  </label>
+                  </LabeledInput>
 
-                  <button
+                  <ActionButton
                     type="submit"
                     disabled={verifyPassLoading}
-                    style={{
-                      padding: "10px 16px",
-                      borderRadius: "8px",
-                      border: "none",
-                      backgroundColor: "#0f766e",
-                      color: "white",
-                      cursor: "pointer",
-                    }}
+                    variant="teal"
                   >
                     {verifyPassLoading ? "Checking..." : "Verify Pass"}
-                  </button>
+                  </ActionButton>
                 </form>
 
                 {verifyPassError && (
-                  <p
-                    style={{
-                      color: "#8a1c1c",
-                      marginTop: "16px",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {verifyPassError}
-                  </p>
+                  <InfoMessage text={verifyPassError} tone="error" />
                 )}
 
                 {verifyPassResult && (
                   <div
                     style={{
                       marginTop: "16px",
-                      padding: "14px",
-                      borderRadius: "10px",
+                      padding: "16px",
+                      borderRadius: "14px",
                       backgroundColor: verifyPassResult.valid
                         ? "#e8f7ec"
                         : "#ffe5e5",
-                      color: verifyPassResult.valid ? "#14532d" : "#8a1c1c",
+                      color: verifyPassResult.valid ? "#166534" : "#991b1b",
                     }}
                   >
                     <p style={{ margin: "0 0 8px 0" }}>
@@ -1469,7 +1402,7 @@ function App() {
                     </p>
                   </div>
                 )}
-              </section>
+              </AppShellCard>
             )}
           </>
         )}
